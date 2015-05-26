@@ -176,14 +176,23 @@ WizardConstructor.prototype = {
 
             var ss = self.collection.simpleSchema();
 
-            var steps = _.map(ss.objectKeys(), function (schemaKey) { // iterate over first level keys
-                var schemaOptions = AutoForm.Utility.getDefs(ss, schemaKey).autoform;
+            var allKeys = _.filter(ss._schemaKeys, function (key) {
+                var value = ss.schema(key);
+                return !(value.autoform && value.autoform.omit);
+            });
+            var topKeys = _.filter(ss.objectKeys(), function (key) {
+                var value = ss.schema(key);
+                return !(value.autoform && value.autoform.omit);
+            });
+            var steps = _.map(topKeys, function (schemaKey) { // iterate over first level keys
 
-                var subKeys = _.map(ss.objectKeys(schemaKey), function (childKey) {
-                    return schemaKey + "." + childKey;
+                var subKeys = _.filter(allKeys, function (key) {
+                    return s.startsWith(key, schemaKey);
                 });
-                var subSchema = new SimpleSchema([ss.pick(subKeys), ss.pick(schemaKey)]);
 
+                var subSchema = ss.pick(subKeys);
+
+                var schemaOptions = AutoForm.Utility.getDefs(ss, schemaKey).autoform;
                 options = _.chain((schemaOptions && schemaOptions.wizard) || {}).pick(
                     'id',
                     'title',
