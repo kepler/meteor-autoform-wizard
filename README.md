@@ -1,13 +1,24 @@
 AutoForm Wizard
 =============
 
-AutoForm Wizard is a multi step form component for AutoForm.
+AutoForm Wizard is a multi step form component for AutoForm originally made by [forwarder](https://github.com/forwarder/meteor-wizard).
+
+This is a fork with the following changes and additions:
+* Steps configuration are inferred from the collection's schema, so no need to manually configure them (although it's still be possible, but needs further testing);
+  * Steps configuration can be overridden inside the schema definition (using `autoform: { wizard: {}}`); 
+* Support for easily editing an existing item: just call the wizard template specifying a `doc` attribute; 
+* `onSubmit` is handled automatically (can be overridden), and other AutoForm hooks can be used (like `onSuccess` and `onError`);
+* Steps name's are automatically handled, so there's no need to manually specify the first step in the router (although there needs to be a route that deals with a `step` parameter and which has to be specified in the `route` attribute in when calling the `afWizard` template). 
+
+To do:
+* Further testing;
+* Use template themes like AutoForm's.
 
 
 ## Installation
 
 ```
-$ meteor add forwarder:autoform-wizard
+$ meteor add kepler:autoform-wizard
 ```
 
 
@@ -19,30 +30,62 @@ $ meteor add forwarder:autoform-wizard
 
 ## Example
 
-A running example can be found here:
-http://autoform-wizard.meteor.com
+~~A running example can be found here: http://autoform-wizard.meteor.com~~
 
-The source code of the example app can be found on Github.
-https://github.com/forwarder/meteor-wizard-example
+The source code of the adapted example app can be found on Github: https://github.com/kepler/meteor-autoform-wizard-example
 
-
-## Basic usage
-
-### Create templates for the wizard
-
-```html
-<template name="basicWizard">
-  {{> wizard id="basic-wizard" steps=steps}}
-</template>
-```
-
-### Define the steps in a template helper
+Attach a schema to a collection as you normally would with [AutoForm](https://github.com/aldeed/meteor-autoform).
 
 ```js
 Schema = {};
 Schema.information = new SimpleSchema(...);
 Schema.confirm = new SimpleSchema(...);
 
+Schema.Orders = new SimpleSchema({
+    contactInformation: {
+        type: Schema.information
+    },
+    confirm: {
+        type: Schema.confirm
+    }
+});
+
+Orders.attachSchema(Schema.Orders);
+```
+
+### A Basic Insert Wizard
+
+```html
+<template name="newOrder">
+    {{> afWizard id="order" collection="Orders"}}
+</template>
+```
+
+This will generate a two steps wizard:
+* One step to fill in the information schema;
+* A second step to fill in the confirm schema.
+
+That's it. Each first level field in the collection's schema will be rendered as a separate step. The last step will merge the values from all steps and insert them into the "Orders" collection.
+
+Please note I have not tested it with first level array fields.
+
+
+### A Basic Update Wizard
+
+```html
+<template name="updateOrder">
+    {{> afWizard id="order" collection="Orders" doc=this}}
+</template>
+```
+
+As with AutoForm's behaviour, you just need to additionally pass a `doc` attribute. In the example we use `doc=this` since we use iron:router's data function to set the template's data context to the order document.
+
+
+### Define the steps in a template helper
+
+The [original way of defining steps](https://github.com/forwarder/meteor-wizard#define-the-steps-in-a-template-helper) should still work: 
+
+```js
 Template.basicWizard.helpers({
   steps: function() {
     return [{
@@ -62,6 +105,43 @@ Template.basicWizard.helpers({
 ```
 
 
+### Configure the steps in the collection
+
+If you want to use steps defined via schema fields and still be able to specify custom options, you can specify the [configuration keys](#wizard-configuration) directly inside the collection's schema to override the default values:
+
+```js
+Schema = {};
+Schema.information = new SimpleSchema(...);
+Schema.confirm = new SimpleSchema(...);
+
+Schema.Orders = new SimpleSchema({
+    contactInformation: {
+        type: Schema.information,
+        autoform: {
+            wizard: {
+                title: 'Information'
+            }
+        }
+    },
+    confirm: {
+        type: Schema.confirm,
+        autoform: {
+            wizard: {
+                title: 'Confirmation',
+                onSubmit: function(data, wizard) {
+                    // submit logic
+                }
+            }
+        }
+    }
+});
+
+Orders.attachSchema(Schema.Orders);
+```
+
+Please note that not every option was thoroughly tested, specially the `schema` field, which might produce unpredictable behaviour.
+
+
 ## Custom step templates
 
 If you need more flexibility in your forms, you can define your own templates to be used for the steps.
@@ -70,7 +150,7 @@ If you need more flexibility in your forms, you can define your own templates to
 
 ```html
 <template name="information">
-  {{> quickform id="information-form" doc=step.data schema=step.schema}}
+    {{> quickform id=step.formId doc=step.data schema=step.schema}}
 </template>
 ```
 
@@ -78,36 +158,46 @@ or
 
 ```html
 <template name="confirm">
-  {{#autoForm id="confirm-form" doc=step.data schema=step.schema}}
-    
-    {{> afQuickField name="acceptTerms"}}
-    
-    {{> wizardButtons}} /* this will render back, next and confirm buttons */
-    
-  {{/autoForm}}
+    {{#autoForm id=step.formId doc=step.data schema=step.schema}}
+        {{> afQuickField name="acceptTerms"}}
+        {{> afWizardButtons}} /* this will render back, next and confirm buttons */
+    {{/autoForm}}
 </template>
 ```
 
+or even
+
+```html
+<template name="information">
+    {{#autoForm id=step.formId doc=step.data schema=step.schema}}
+        {{#each afFieldNames}}
+            {{> afQuickField name=this.name options=afOptionsFromSchema}}
+        {{/each}}
+        {{> afWizardButtons}}
+    {{/autoForm}}
+</template>
+```
+
+Note that using the `quickform` template will not produce the `Back` and `Next` buttons, although the `Submit` button will effectively either go to the next step or submit the form if on the last step.
+
+Also note that you should provide the `schema` attribute and not the `collection` attribute to the `autoForm` and `quickform` templates, otherwise the entire form will be rendered.
+
 ### Configure steps
 
+Use the `template` key:
+
 ```js
-Template.basicWizard.helpers({
-  steps: function() {
-    return [{
-      id: 'information',
-      title: 'Information',
-      template: 'information',
-      formId: 'information-form',
-    },{
-      id: 'confirm',
-      title: 'Confirm',
-      template: 'confirm',
-      formId: 'confirm-form',
-      onSubmit: function(data, wizard) {
-        // submit logic
-      }
-    }]
-  }
+Schema.Orders = new SimpleSchema({
+    contactInformation: {
+        type: Schema.information,
+        autoform: {
+            wizard: {
+                title: 'Information',
+                template: 'information'
+            }
+        }
+    },
+    ...
 });
 ```
 
@@ -137,6 +227,7 @@ The following attributes are supported:
 * `stepsTemplate`: Optional. A custom steps template.
 
 #### onSubmit
+
 Use this callback to process the form data.
 ```js
 onSubmit: function(data, wizard) {
@@ -197,44 +288,30 @@ Router.route('/order/:step', {name: 'order'});
 
 Add a route parameter with the name of the route to your wizard instance.
 ```
-{{> wizard id="order-wizard" route="order" steps=steps}}
+{{> afWizard id="order" collection="Orders" route="order"}}
 ```
+
+To automatically redirect to the first step, specify a route to the template that includes the `afWizard` template and also a route for steps:
+```js
+Router.route('/order/new', {
+    name: 'newOrder'
+});
+
+Router.route('/order/new/:step', {
+    name: 'newOrderStep',
+    template: 'newOrder'
+});
+```
+
+Then in the `newOrder` template, tell the wizard to use the route for steps:
+```
+{{> afWizard id="order" collection="Orders" route="newOrderStep"}}
+```
+
+Now accessing `/order/new` will redirect to `/order/new/information`, for example.
+
+Also, any URL with an invalid step name will redirect to the first step URL. 
 
 ### Custom router bindings
 
-If you use a different router you can easily setup custom bindings.
-This example will you show how to bind the wizard to Flow Router (meteorhacks:flow-router).
-
-```js
-Wizard.registerRouter('flow:router', {
-  go: function(name, stepId) {
-    FlowRouter.go(name, this.getParams(stepId));
-  },
-  getParams: function(stepId) {
-    var route = Router.current()
-      , params = route.params || {};
-  
-    return _.extend(params, {step: stepId});
-  },
-  getStep: function() {
-    return FlowRouter.getParam('step');
-  },
-  path: function(name, stepId) {
-    return FlowRouter.go(name, this.getParams(stepId));
-  }
-});
-
-```
-
-Then to enable Flow Router add the following line to your client code.
-
-```js
-Wizard.useRouter('flow:router');
-```
-
-
-## Todo
-
-* Improve documentation
-* Write some tests
-* Probably more, just let me know or submit a pull request :)
+Check [Forwarder's documentation](https://github.com/forwarder/meteor-wizard#custom-router-bindings).
