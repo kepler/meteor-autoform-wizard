@@ -1,7 +1,7 @@
 Package.describe({
   name: 'kepler:autoform-wizard',
   summary: 'A multi step form component for AutoForm.',
-  version: '0.0.1',
+  version: '0.0.2',
   git: 'https://github.com/kepler/meteor-autoform-wizard.git'
 });
 

@@ -1,5 +1,4 @@
-AutoForm Wizard
-=============
+# AutoForm Wizard
 
 AutoForm Wizard is a multi step form component for AutoForm originally made by [forwarder](https://github.com/forwarder/meteor-wizard).
 
@@ -214,7 +213,7 @@ The following attributes are supported:
   * `title`: Optional. The title displayed in the breadcrumbs.
   * `template`: Optional. Uses a default template with a quickform if not set.
   * `schema`: Optional. Only required if don't use a custom template.
-  * `formId`: Optional. The AutoForm form id used in the template. Appends '-form' to the step.id if not set. Used to attach submit handlers and retreive the step data.
+  * `formId`: Optional. The AutoForm form id used in the template. Concatenates the wizard.id, the step.id and '-form' if not set. Used to attach submit handlers and retrieve the step data.
   * `onSubmit`: Optional. This function is executed after the form is submitted and validates. `this` references to the AutoForm instance. Shows the next step by default. Parameters:
       * `data`: The current step data.
       * `wizard`: The wizard instance.
@@ -315,3 +314,10 @@ Also, any URL with an invalid step name will redirect to the first step URL.
 ### Custom router bindings
 
 Check [Forwarder's documentation](https://github.com/forwarder/meteor-wizard#custom-router-bindings).
+
+## Change log
+
+`0.0.2`
+
+* Fix issue with picking simple schema fields that are arrays (see https://github.com/aldeed/meteor-simple-schema/issues/284).
+* The last step's formId is set to the wizard's id, for making it easier to add hooks.

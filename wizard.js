@@ -206,6 +206,14 @@ WizardConstructor.prototype = {
                         schema: subSchema  // Returns a schema
                     }).value();
 
+                if (!options.formId) {
+                    if (schemaKey === _.last(topKeys)) {
+                        options.formId = self.id;
+                    } else {
+                        options.formId = self.id + '-' + options.id + '-form';
+                    }
+                }
+
                 if (self.doc) {
                     options.doc = {};
                     options.doc[schemaKey] = self.doc[schemaKey];
@@ -237,14 +245,6 @@ WizardConstructor.prototype = {
     _initStep: function (step) {
         var self = this;
 
-        if (!step.id) {
-            throw new Meteor.Error('step-id-required', 'Step.id is required');
-        }
-
-        if (!step.formId) {
-            step.formId = step.id + '-form';
-        }
-
         if (step.doc) {
             self.store.set(step.id, step.doc);
         }
@@ -267,7 +267,7 @@ WizardConstructor.prototype = {
                     if (!self.collection || !self.isLastStep()) {
                         self.next(data);
                     } else {
-                        if (!self.formType || !self.doc || self.formType === "insert") {
+                        if (!self.doc || !self.formType || self.formType === "insert") {
                             self.collection.insert(_.extend(self.mergedData(), data), function (err, id) {
                                 if (err) {
                                     autoForm.done(err);
@@ -288,6 +288,7 @@ WizardConstructor.prototype = {
                         }
                     }
                 }
+                return false;
             }
         }, true);
     },

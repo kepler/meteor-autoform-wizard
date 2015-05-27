@@ -1,6 +1,6 @@
 <template name="afWizard">
     {{#with innerContext ..}}
-        <div id="{{wizard.id}}" class="wizard">
+        <div id="{{wizard.id}}-wizard" class="wizard">
             {{> Template.dynamic template=wizard.stepsTemplate}}
             {{> Template.dynamic template=activeStepTemplate}}
         </div>
